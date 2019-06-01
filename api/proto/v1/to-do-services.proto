@@ -58,4 +58,8 @@ message MakeDeleteResponse {
 }
 service TodoService {
     rpc Create (MakeCreateRequest) returns (MakeCreateResponse);
+    rpc Update (MakeUpdateRequest) returns (MakeUpdateResponse);
+    rpc GetOne (MakeGetRequest) returns (MakeGetResponse);
+    rpc GetAll (MakeGetAllRequest) returns (MakeGetAllResponse);
+    rpc Delete (MakeDeleteRequest) returns (MakeDeleteResponse);
 }
