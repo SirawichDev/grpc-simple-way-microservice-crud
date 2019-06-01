@@ -31,21 +31,28 @@ message MakeGetResponse {
     Todo todo = 2;
 }
 
-message MakeUpdateRequest
-{
+message MakeGetAllRequest {
+    string api = 1;
+}
+message MakeGetAllResponse {
+    string api = 1;
+    repeated Todo todo = 2;
+}
+
+message MakeUpdateRequest {
     string api = 1;
     Todo todo = 2;
 }
-message MakeUpdateResponse{
+message MakeUpdateResponse {
     string api = 1;
     int64 updated = 2;
 }
-message MakeDeleteRequest{
+message MakeDeleteRequest {
     string api = 1;
     int64 id = 2;
 
 }
-message MakeDeleteResponse{
+message MakeDeleteResponse {
     string api = 1;
     int64 deleted = 2;
 }
