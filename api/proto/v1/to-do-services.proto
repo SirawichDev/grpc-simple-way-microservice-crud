@@ -4,7 +4,7 @@ package v1;
 
 import "google/protobuf/timestamp.proto";
 
-message Todo{
+message Todo {
     int64 id = 1;
     string title = 2;
     string description = 3;
@@ -12,17 +12,43 @@ message Todo{
     google.protobuf.Timestamp timestamp = 4;
 }
 
-message MakeRequest {
+message MakeCreateRequest {
     string api = 1;
     Todo todo = 2;
 }
 
-message MakeResponse{
+message MakeCreateResponse {
     string api = 1;
     int64 id = 2;
 }
+message MakeGetRequest {
+    string api = 1;
+    int64 id = 2;
 
+}
+message MakeGetResponse {
+    string api = 1;
+    Todo todo = 2;
+}
 
-service TodoService{
-    rpc Create(MakeRequest) returns (MakeResponse);
+message MakeUpdateRequest
+{
+    string api = 1;
+    Todo todo = 2;
+}
+message MakeUpdateResponse{
+    string api = 1;
+    int64 updated = 2;
+}
+message MakeDeleteRequest{
+    string api = 1;
+    int64 id = 2;
+
+}
+message MakeDeleteResponse{
+    string api = 1;
+    int64 deleted = 2;
+}
+service TodoService {
+    rpc Create (MakeCreateRequest) returns (MakeCreateResponse);
 }
