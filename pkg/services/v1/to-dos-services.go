@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	v1 "github.com/SirawichDev/grpc-crud/pkg/api/v1"
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc/codes"
@@ -63,4 +64,38 @@ func (s *toDoServiceServer) Create(ctx context.Context, req *v1.MakeCreateReques
 		Id:  id,
 	}, nil
 
+}
+
+func (s *toDoServiceServer) Update(ctx context.Context, req *v1.MakeUpdateRequest) (*v1.MakeUpdateResponse, error) {
+	if err := s.checkHealth(req.Api); err != nil {
+		return nil, err
+	}
+	c, err := s.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+	timestamp, err := ptypes.Timestamp(req.Todo.Timestamp)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "timestamp field has invalid"+err.Error())
+	}
+
+	res, err := c.ExecContext(ctx, "UPDATE Todo SET `Title`=?,`Description`=?,`Timestamp`=? WHERE `ID` =? ", req.Todo.Title, req.Todo.Description,
+		timestamp, req.Todo.Id)
+	if err != nil {
+		return nil, status.Error(codes.Unknown, "failed to update ToDo-> "+err.Error())
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return nil, status.Error(codes.Unknown, "failed to update "+err.Error())
+
+	}
+	if rows == 0 {
+		return nil, status.Error(codes.NotFound, fmt.Sprint("Todo with Id = '%d' ", req.Todo.Id))
+	}
+
+	return &v1.MakeUpdateResponse{
+		Api:     apiVer,
+		Updated: rows,
+	}, nil
 }
