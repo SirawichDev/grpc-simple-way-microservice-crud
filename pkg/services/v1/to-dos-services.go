@@ -8,6 +8,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"time"
 )
 
 const (
@@ -97,5 +98,108 @@ func (s *toDoServiceServer) Update(ctx context.Context, req *v1.MakeUpdateReques
 	return &v1.MakeUpdateResponse{
 		Api:     apiVer,
 		Updated: rows,
+	}, nil
+}
+
+func (s *toDoServiceServer) GetOne(ctx context.Context, req *v1.MakeGetRequest) (*v1.MakeGetResponse, error) {
+	if err := s.checkHealth(req.Api); err != nil {
+		return nil, err
+	}
+	c, err := s.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+	rows, err := c.QueryContext(ctx, "SELECT `ID`, `Title`,`Description`, `Timestamp` FROM Todo WHERE  `ID` = ?", req.Id)
+	if err != nil {
+		return nil, status.Error(codes.Unknown, "failed to selete from todo -> "+err.Error())
+
+	}
+	defer rows.Close()
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			return nil, status.Error(codes.Unknown, "failed to get data from todo =>"+err.Error())
+		}
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("TODO with ID = '%d' is no found", req.Id))
+	}
+	var td v1.Todo
+	var timeStamp time.Time
+	if err := rows.Scan(&td.Id, &td.Title, &td.Description, &timeStamp); err != nil {
+		return nil, status.Error(codes.Unknown, "failed to get field values from todo row ->"+err.Error())
+	}
+	td.Timestamp, err = ptypes.TimestampProto(timeStamp)
+	if err != nil {
+		return nil, status.Error(codes.Unknown, "timestamp field has invalid format->"+err.Error())
+	}
+	if rows.Next() {
+		return nil, status.Error(codes.Unknown, fmt.Sprintf("found multiple Todo rows with ID='%d'", req.Id))
+	}
+
+	return &v1.MakeGetResponse{
+		Api:  apiVer,
+		Todo: &td,
+	}, nil
+}
+func (s *toDoServiceServer) Delete(ctx context.Context, req *v1.MakeDeleteRequest) (*v1.MakeDeleteResponse, error) {
+	if err := s.checkHealth(req.Api); err != nil {
+		return nil, err
+	}
+	c, err := s.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+
+	res, err := c.ExecContext(ctx, "DELETE FROM Todo WHERE `ID`=?", req.Id)
+	if err != nil {
+		return nil, status.Error(codes.Unknown, "failed to delete Todo=>"+err.Error())
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return nil, status.Error(codes.Unknown, "failed to get row affected value "+err.Error())
+
+	}
+	if rows == 0 {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("Todo with ID='%d' is not found", req.Id))
+	}
+	return &v1.MakeDeleteResponse{
+		Api:     apiVer,
+		Deleted: rows,
+	}, nil
+}
+
+func (s *toDoServiceServer) GetAll(ctx context.Context, req *v1.MakeCreateRequest) (*v1.MakeGetAllResponse, error) {
+	if err := s.checkHealth(req.Api); err != nil {
+		return nil, err
+	}
+	c, err := s.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close()
+	rows, err := c.QueryContext(ctx, "SELECT `ID`,`Title`,`Description`,`Timestamp` FROM Todo")
+	if err != nil {
+		return nil, status.Error(codes.Unknown, "failed to select from todo ->"+err.Error())
+	}
+	defer rows.Close()
+	var timestamp time.Time
+	list := []*v1.Todo{}
+	for rows.Next() {
+		td := new(v1.Todo)
+		if err := rows.Scan(&td.Id, &td.Title, &td.Description, &timestamp); err != nil {
+			return nil, status.Error(codes.Unknown, "failed to get field values from todo row->"+err.Error())
+		}
+		td.Timestamp, err = ptypes.TimestampProto(timestamp)
+		if err != nil {
+			return nil, status.Error(codes.Unknown, "timestamp field has invalid format"+err.Error())
+		}
+		list = append(list, td)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, status.Error(codes.Unknown, "failed to get data from todo")
+	}
+	return &v1.MakeGetAllResponse{
+		Api:  apiVer,
+		Todo: list,
 	}, nil
 }
